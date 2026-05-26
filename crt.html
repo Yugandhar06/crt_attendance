@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Attendance Tracker — MY</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #0d0f14;
+    --bg2: #13161e;
+    --bg3: #1a1e28;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.13);
+    --text: #e8eaf0;
+    --muted: #6b7080;
+    --green: #22c97a;
+    --green-bg: rgba(34,201,122,0.1);
+    --green-border: rgba(34,201,122,0.3);
+    --red: #f25f5c;
+    --red-bg: rgba(242,95,92,0.1);
+    --red-border: rgba(242,95,92,0.3);
+    --blue: #4f9fff;
+    --blue-bg: rgba(79,159,255,0.1);
+    --amber: #f7b731;
+    --amber-bg: rgba(247,183,49,0.1);
+    --accent: #7c6aff;
+    --accent-bg: rgba(124,106,255,0.12);
+    --radius: 10px;
+    --radius-lg: 14px;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+  /* grid bg */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image:
+      linear-gradient(rgba(124,106,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(124,106,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+  .container { max-width: 900px; margin: 0 auto; padding: 32px 20px 60px; position: relative; z-index: 1; }
+
+  /* header */
+  .header { margin-bottom: 28px; }
+  .header-top { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+  .header h1 { font-family: 'Space Mono', monospace; font-size: 22px; font-weight: 700; letter-spacing: -0.5px; color: #fff; }
+  .header h1 span { color: var(--accent); }
+  .header-meta { font-size: 12px; color: var(--muted); margin-top: 4px; font-family: 'Space Mono', monospace; }
+  .header-meta span { color: var(--text); }
+
+  /* stats */
+  .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+  .stat-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 14px 16px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+  .stat-card::after {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0;
+    height: 2px;
+    border-radius: 2px 2px 0 0;
+  }
+  .stat-card.total::after { background: var(--accent); }
+  .stat-card.present::after { background: var(--green); }
+  .stat-card.absent::after { background: var(--red); }
+  .stat-card.pct::after { background: var(--blue); }
+  .stat-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; font-family: 'Space Mono', monospace; margin-bottom: 6px; }
+  .stat-val { font-family: 'Space Mono', monospace; font-size: 26px; font-weight: 700; }
+  .stat-val.c-total { color: var(--accent); }
+  .stat-val.c-green { color: var(--green); }
+  .stat-val.c-red { color: var(--red); }
+  .stat-val.c-blue { color: var(--blue); }
+
+  /* progress */
+  .prog-wrap { margin-bottom: 20px; background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px 20px; }
+  .prog-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-size: 12px; color: var(--muted); font-family: 'Space Mono', monospace; }
+  .prog-header strong { color: var(--text); }
+  .prog-track { background: var(--bg3); border-radius: 20px; height: 8px; position: relative; overflow: visible; }
+  .prog-bar { height: 8px; border-radius: 20px; transition: width 0.5s cubic-bezier(.4,0,.2,1), background 0.4s; position: relative; }
+  .prog-bar.ok { background: linear-gradient(90deg, #22c97a, #4ade9a); }
+  .prog-bar.warn { background: linear-gradient(90deg, #f7b731, #ffd06e); }
+  .prog-bar.danger { background: linear-gradient(90deg, #f25f5c, #ff8a88); }
+  .prog-markers { display: flex; justify-content: space-between; margin-top: 6px; font-size: 11px; color: var(--muted); font-family: 'Space Mono', monospace; }
+  .marker-75 { position: absolute; top: -3px; left: 75%; width: 1px; height: 14px; background: var(--amber); opacity: 0.6; }
+  .marker-85 { position: absolute; top: -3px; left: 85%; width: 1px; height: 14px; background: var(--blue); opacity: 0.6; }
+
+  /* bunk planner */
+  .planner { margin-bottom: 20px; background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px 20px; }
+  .section-title { font-family: 'Space Mono', monospace; font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+  .section-title .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); display: inline-block; }
+  .planner-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .plan-card { background: var(--bg3); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; }
+  .plan-card .lbl { font-size: 11px; color: var(--muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.6px; }
+  .plan-card .val { font-family: 'Space Mono', monospace; font-size: 22px; font-weight: 700; color: var(--green); }
+  .plan-card .val.warn { color: var(--amber); }
+  .plan-card .val.danger { color: var(--red); }
+  .plan-card .sub { font-size: 11px; color: var(--muted); margin-top: 3px; font-family: 'Space Mono', monospace; }
+  .advice { margin-top: 14px; padding: 10px 14px; background: var(--accent-bg); border: 1px solid rgba(124,106,255,0.2); border-radius: var(--radius); font-size: 13px; color: #b0aaff; line-height: 1.7; }
+
+  /* add entry */
+  .add-section { margin-bottom: 20px; background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px 20px; }
+  .form-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 14px; }
+  .form-row label { font-size: 12px; color: var(--muted); font-family: 'Space Mono', monospace; white-space: nowrap; }
+  input[type="date"], select {
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius);
+    color: var(--text);
+    padding: 8px 12px;
+    font-size: 13px;
+    font-family: 'DM Sans', sans-serif;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  input[type="date"]:focus, select:focus { border-color: var(--accent); }
+  input[type="date"] { flex: 1; min-width: 150px; }
+  select { width: 80px; }
+  .slots-lbl { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 6px; }
+  .slot-time { font-size: 10px; color: var(--muted); font-family: 'Space Mono', monospace; min-width: 56px; text-align: center; }
+  .slots-row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+  .slot-btn {
+    min-width: 56px; padding: 7px 4px;
+    border: 1px solid var(--border2);
+    border-radius: 8px;
+    background: var(--bg3);
+    color: var(--muted);
+    font-family: 'Space Mono', monospace;
+    font-size: 13px; font-weight: 700;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.15s;
+    user-select: none;
+  }
+  .slot-btn:hover { border-color: var(--border2); filter: brightness(1.2); }
+  .slot-btn.P { background: var(--green-bg); color: var(--green); border-color: var(--green-border); }
+  .slot-btn.A { background: var(--red-bg); color: var(--red); border-color: var(--red-border); }
+  .form-btns { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .btn {
+    padding: 9px 20px;
+    border-radius: var(--radius);
+    font-size: 13px;
+    font-family: 'Space Mono', monospace;
+    font-weight: 700;
+    cursor: pointer;
+    border: 1px solid;
+    transition: all 0.15s;
+    letter-spacing: 0.3px;
+  }
+  .btn-save { background: var(--accent-bg); color: #a89dff; border-color: rgba(124,106,255,0.4); }
+  .btn-save:hover { background: rgba(124,106,255,0.22); border-color: var(--accent); }
+  .btn-clear { background: transparent; color: var(--muted); border-color: var(--border); }
+  .btn-clear:hover { color: var(--text); border-color: var(--border2); }
+  .save-msg { font-size: 12px; color: var(--green); font-family: 'Space Mono', monospace; opacity: 0; transition: opacity 0.3s; }
+  .save-msg.show { opacity: 1; }
+
+  /* log table */
+  .log-section { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px 20px; }
+  .table-scroll { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; min-width: 700px; }
+  th {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--border);
+    text-align: left;
+    white-space: nowrap;
+  }
+  td { padding: 9px 10px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tr { transition: background 0.15s; }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+  .td-date { font-family: 'Space Mono', monospace; font-size: 12px; font-weight: 700; white-space: nowrap; color: var(--text); }
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    font-weight: 700;
+  }
+  .badge-P { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-border); }
+  .badge-A { background: var(--red-bg); color: var(--red); border: 1px solid var(--red-border); }
+  .badge-score { background: var(--bg3); color: var(--text); border: 1px solid var(--border); font-family: 'Space Mono', monospace; font-size: 12px; }
+  .icon-btn {
+    background: none; border: none; cursor: pointer;
+    padding: 4px 7px; border-radius: 6px;
+    font-size: 16px; color: var(--muted);
+    transition: all 0.15s;
+  }
+  .icon-btn:hover.edit { color: var(--blue); background: var(--blue-bg); }
+  .icon-btn:hover.del { color: var(--red); background: var(--red-bg); }
+  .empty-row { color: var(--muted); text-align: center; padding: 30px 0; font-family: 'Space Mono', monospace; font-size: 12px; }
+
+  /* scrollbar */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg2); }
+  ::-webkit-scrollbar-thumb { background: var(--bg3); border-radius: 3px; }
+
+  @media (max-width: 620px) {
+    .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    .planner-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (max-width: 400px) {
+    .stats-grid { grid-template-columns: 1fr 1fr; }
+    .planner-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <div class="header-top">
+      <div>
+        <h1>ATTEND<span>ANCE</span> TRACKER</h1>
+        <div class="header-meta">
+          <span>MAMIDI YUGANDHAR RAO</span> · CSE1 · IS201 · R404A · <span>2300032847</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-grid">
+    <div class="stat-card total">
+      <div class="stat-label">Total Sessions</div>
+      <div class="stat-val c-total" id="stat-total">—</div>
+    </div>
+    <div class="stat-card present">
+      <div class="stat-label">Present</div>
+      <div class="stat-val c-green" id="stat-present">—</div>
+    </div>
+    <div class="stat-card absent">
+      <div class="stat-label">Absent</div>
+      <div class="stat-val c-red" id="stat-absent">—</div>
+    </div>
+    <div class="stat-card pct">
+      <div class="stat-label">Attendance %</div>
+      <div class="stat-val c-blue" id="stat-pct">—</div>
+    </div>
+  </div>
+
+  <!-- Progress -->
+  <div class="prog-wrap">
+    <div class="prog-header">
+      <span>Attendance progress</span>
+      <strong id="prog-label">0%</strong>
+    </div>
+    <div class="prog-track">
+      <div class="prog-bar ok" id="prog-bar" style="width:0%"></div>
+      <div class="marker-75"></div>
+      <div class="marker-85"></div>
+    </div>
+    <div class="prog-markers">
+      <span>0%</span>
+      <span style="color:var(--amber)">75% min</span>
+      <span style="color:var(--blue)">85% target</span>
+      <span>100%</span>
+    </div>
+  </div>
+
+  <!-- Planner -->
+  <div class="planner">
+    <div class="section-title"><span class="dot"></span> Session Planner — Bunking Calculator (stay &gt;85%)</div>
+    <div class="planner-grid">
+      <div class="plan-card">
+        <div class="lbl">Can bunk (85% threshold)</div>
+        <div class="val" id="bunk-85">—</div>
+        <div class="sub" id="bunk-85-sub"></div>
+      </div>
+      <div class="plan-card">
+        <div class="lbl">Can bunk (75% threshold)</div>
+        <div class="val" id="bunk-75">—</div>
+        <div class="sub" id="bunk-75-sub"></div>
+      </div>
+      <div class="plan-card">
+        <div class="lbl">Need to attend (reach 85%)</div>
+        <div class="val" id="need-85">—</div>
+        <div class="sub" id="need-85-sub"></div>
+      </div>
+    </div>
+    <div class="advice" id="advice-text">Add entries to see advice.</div>
+  </div>
+
+  <!-- Add Entry -->
+  <div class="add-section">
+    <div class="section-title"><span class="dot"></span> Add / Edit Attendance Entry</div>
+    <div class="form-row">
+      <label>Date</label>
+      <input type="date" id="entry-date" />
+      <label>Sessions that day</label>
+      <select id="total-slots">
+        <option value="8" selected>8</option>
+        <option value="7">7</option>
+        <option value="6">6</option>
+        <option value="5">5</option>
+        <option value="4">4</option>
+        <option value="3">3</option>
+        <option value="2">2</option>
+        <option value="1">1</option>
+      </select>
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:8px;font-family:'Space Mono',monospace;">
+      TAP EACH SLOT TO TOGGLE P / A
+    </div>
+    <div class="slots-lbl" id="slots-lbl-row"></div>
+    <div class="slots-row" id="slots-toggle-row"></div>
+    <div class="form-btns">
+      <button class="btn btn-save" onclick="saveEntry()">[ SAVE ]</button>
+      <button class="btn btn-clear" onclick="clearForm()">[ CLEAR ]</button>
+      <span class="save-msg" id="save-msg">✓ SAVED</span>
+    </div>
+  </div>
+
+  <!-- Log -->
+  <div class="log-section">
+    <div class="section-title"><span class="dot"></span> Attendance Log</div>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>P</th><th>A</th><th>Score</th>
+            <th>09:20</th><th>10:10</th><th>11:10</th><th>12:00</th>
+            <th>13:50</th><th>14:40</th><th>15:50</th><th>16:30</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="log-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  const SLOT_TIMES = ["09:20","10:10","11:10","12:00","13:50","14:40","15:50","16:30"];
+  const STORAGE_KEY = "att_tracker_v3";
+  let records = [];
+  let slotStates = [];
+
+  const DEFAULT_DATA = [
+    { date:"2026-05-26", slots:["P","P","P","P","P","P","P","P"] },
+    { date:"2026-05-25", slots:["P","P","P","P","P","P","P","P"] },
+    { date:"2026-05-23", slots:["P","P","P","P","P","P","P","P"] },
+    { date:"2026-05-22", slots:["P","P","P","P","P","P","A","A"] },
+    { date:"2026-05-21", slots:["P","P","P","P","P","P","P","P"] },
+    { date:"2026-05-20", slots:["P","P","P","P","P","P","P","P"] },
+    { date:"2026-05-19", slots:["P","P","P","P","P","P","P","P"] },
+    { date:"2026-05-18", slots:["P","P","P","P","P","P","P","P"] },
+    { date:"2026-05-16", slots:["P","P","P","P","P","P","P","P"] },
+    { date:"2026-05-15", slots:["P","P","P","P","P","P","P","P"] },
+    { date:"2026-05-14", slots:["A","A","P","P","P","P","P","P"] },
+    { date:"2026-05-13", slots:["P","P","P","P","P","P","P","P"] },
+    { date:"2026-05-12", slots:["P","P","P","P","A","A","A","A"] },
+    { date:"2026-05-11", slots:["P","P","P","P","A","A","A","A"] },
+  ];
+
+  function loadData() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) { records = JSON.parse(raw); return; }
+    } catch(e) {}
+    records = JSON.parse(JSON.stringify(DEFAULT_DATA));
+    persistData();
+  }
+
+  function persistData() {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(records)); } catch(e) {}
+  }
+
+  function initSlots() {
+    const n = parseInt(document.getElementById("total-slots").value);
+    slotStates = Array(n).fill("P");
+    renderSlots();
+  }
+
+  function renderSlots() {
+    const n = slotStates.length;
+    document.getElementById("slots-lbl-row").innerHTML =
+      SLOT_TIMES.slice(0,n).map(t => `<span class="slot-time">${t}</span>`).join("");
+    document.getElementById("slots-toggle-row").innerHTML =
+      slotStates.map((s,i) =>
+        `<button class="slot-btn ${s}" onclick="toggleSlot(${i})">${s}</button>`
+      ).join("");
+  }
+
+  function toggleSlot(i) {
+    slotStates[i] = slotStates[i] === "P" ? "A" : "P";
+    renderSlots();
+  }
+
+  function saveEntry() {
+    const date = document.getElementById("entry-date").value;
+    if (!date) { alert("Please select a date."); return; }
+    const idx = records.findIndex(r => r.date === date);
+    const entry = { date, slots: [...slotStates] };
+    if (idx >= 0) records[idx] = entry;
+    else records.push(entry);
+    records.sort((a,b) => b.date.localeCompare(a.date));
+    persistData();
+    renderAll();
+    const msg = document.getElementById("save-msg");
+    msg.classList.add("show");
+    setTimeout(() => msg.classList.remove("show"), 2000);
+  }
+
+  function clearForm() {
+    document.getElementById("entry-date").value = "";
+    initSlots();
+  }
+
+  function deleteEntry(date) {
+    if (!confirm("Delete entry for " + date + "?")) return;
+    records = records.filter(r => r.date !== date);
+    persistData();
+    renderAll();
+  }
+
+  function editEntry(date) {
+    const r = records.find(x => x.date === date);
+    if (!r) return;
+    document.getElementById("entry-date").value = date;
+    document.getElementById("total-slots").value = r.slots.length;
+    slotStates = [...r.slots];
+    renderSlots();
+    document.querySelector(".add-section").scrollIntoView({ behavior:"smooth" });
+  }
+
+  function calcStats() {
+    let p = 0, a = 0;
+    for (const r of records) {
+      for (const s of r.slots) { s === "P" ? p++ : a++; }
+    }
+    return { p, a, total: p + a };
+  }
+
+  function fmtDate(d) {
+    const dt = new Date(d + "T00:00:00");
+    return dt.toLocaleDateString("en-IN", { day:"2-digit", month:"short", year:"numeric" });
+  }
+
+  function renderAll() {
+    const { p, a, total } = calcStats();
+    const pct = total > 0 ? (p / total * 100) : 0;
+
+    document.getElementById("stat-total").textContent = total;
+    document.getElementById("stat-present").textContent = p;
+    document.getElementById("stat-absent").textContent = a;
+    document.getElementById("stat-pct").textContent = total > 0 ? pct.toFixed(1) + "%" : "—";
+
+    const bar = document.getElementById("prog-bar");
+    bar.style.width = Math.min(pct, 100) + "%";
+    bar.className = "prog-bar " + (pct < 75 ? "danger" : pct < 85 ? "warn" : "ok");
+    document.getElementById("prog-label").textContent = pct.toFixed(1) + "%";
+
+    // bunk calc
+    const bunk85 = Math.max(0, Math.floor(p / 0.85 - total));
+    const bunk75 = Math.max(0, Math.floor(p / 0.75 - total));
+    let need85 = 0;
+    if (pct < 85 && total > 0) need85 = Math.ceil((0.85 * total - p) / 0.15);
+
+    const b85el = document.getElementById("bunk-85");
+    b85el.textContent = bunk85;
+    b85el.className = "val " + (bunk85 > 5 ? "" : bunk85 > 0 ? "warn" : "danger");
+    document.getElementById("bunk-85-sub").textContent = bunk85 > 0 ? `≈ ${Math.floor(bunk85/8)}d + ${bunk85%8}s` : "None available";
+
+    const b75el = document.getElementById("bunk-75");
+    b75el.textContent = bunk75;
+    b75el.className = "val";
+    document.getElementById("bunk-75-sub").textContent = bunk75 > 0 ? `≈ ${Math.floor(bunk75/8)}d + ${bunk75%8}s` : "None available";
+
+    const n85el = document.getElementById("need-85");
+    n85el.textContent = need85 > 0 ? need85 : (total > 0 ? "✓" : "—");
+    n85el.className = "val " + (need85 > 0 ? "danger" : "");
+    document.getElementById("need-85-sub").textContent = need85 > 0 ? `Attend ${need85} more consecutively` : (total > 0 ? "Already above 85%!" : "");
+
+    // advice
+    let adv = "";
+    if (total === 0) {
+      adv = "Add your attendance entries to see personalized advice.";
+    } else if (pct >= 85) {
+      adv = `You're at ${pct.toFixed(1)}% — safely above the 85% target. You can skip up to ${bunk85} session${bunk85!==1?"s":""} and still stay above 85%. Spread them out — no more than 1 day off per week.`;
+    } else if (pct >= 75) {
+      adv = `You're at ${pct.toFixed(1)}% — above 75% but below 85%. Attend ${need85} more sessions to reach the 85% target. Avoid bunking right now.`;
+    } else {
+      adv = `⚠ Attendance is ${pct.toFixed(1)}% — below the 75% minimum! You need to attend ${need85} consecutive sessions to get back to 85%. Do not skip any classes.`;
+    }
+    document.getElementById("advice-text").textContent = adv;
+
+    // table
+    const tbody = document.getElementById("log-body");
+    if (records.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="13" class="empty-row">— NO ENTRIES YET —</td></tr>`;
+      return;
+    }
+    tbody.innerHTML = records.map(r => {
+      const rp = r.slots.filter(s=>s==="P").length;
+      const ra = r.slots.filter(s=>s==="A").length;
+      const cells = SLOT_TIMES.map((_,i) => {
+        if (i >= r.slots.length) return `<td></td>`;
+        const s = r.slots[i];
+        return `<td><span class="badge badge-${s}">${s}</span></td>`;
+      }).join("");
+      return `<tr>
+        <td class="td-date">${fmtDate(r.date)}</td>
+        <td style="color:var(--green);font-family:'Space Mono',monospace;font-weight:700">${rp}</td>
+        <td style="color:var(--red);font-family:'Space Mono',monospace;font-weight:700">${ra}</td>
+        <td><span class="badge badge-score">${rp}/${r.slots.length}</span></td>
+        ${cells}
+        <td style="white-space:nowrap">
+          <button class="icon-btn edit" onclick="editEntry('${r.date}')" title="Edit">✏</button>
+          <button class="icon-btn del" onclick="deleteEntry('${r.date}')" title="Delete">🗑</button>
+        </td>
+      </tr>`;
+    }).join("");
+  }
+
+  document.getElementById("total-slots").addEventListener("change", initSlots);
+
+  loadData();
+  initSlots();
+  renderAll();
+</script>
+</body>
+</html>
